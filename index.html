@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFF9E9">
+<title>Sunflower Tuner</title>
+<style>
+:root{
+  --cream:#FFF9E9; --c1:#F8E7A1; --c2:#F3D777; --c3:#EEC34F; --c4:#E5AE32;
+  --brown:#49351F; --leaf:#587644; --green:#648747; --amber:#B77932; --muted:#806D50;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--cream);color:var(--brown);overflow-x:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--brown);outline-offset:3px}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  padding:calc(env(safe-area-inset-top,0px) + 28px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+  transition:opacity .3s ease,visibility .3s;overflow:hidden}
+.screen.off{opacity:0;visibility:hidden;pointer-events:none}
+
+/* Screen one */
+#pick header{text-align:center;margin:18px 0 26px}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:-.01em}
+.sub{margin:0;color:var(--muted);font-size:16px}
+.cards{width:100%;max-width:480px;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0;padding-bottom:8px}
+.card{flex:1;min-height:76px;max-height:150px;border:0;border-radius:20px;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  box-shadow:0 2px 8px rgba(73,53,31,.14);transition:transform .12s ease}
+.card:active{transform:scale(.97)}
+.card b{font-size:46px;line-height:1;font-weight:800}
+.card span{font-size:18px;font-variant-numeric:tabular-nums}
+.card small{font-size:13px;color:var(--brown);opacity:.8}
+
+/* Screen two */
+#tune{justify-content:flex-start}
+#back{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 10px);width:48px;height:48px;
+  border:0;background:none;border-radius:24px;display:grid;place-items:center}
+#back svg{width:26px;height:26px}
+.meter{width:100%;max-width:440px;margin-top:62px}
+.track{position:relative;height:8px;border-radius:4px;background:rgba(128,109,80,.22)}
+.track::after{content:"";position:absolute;left:50%;top:-9px;width:2px;height:26px;margin-left:-1px;background:var(--brown);opacity:.55;border-radius:1px}
+#marker{position:absolute;top:50%;left:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;
+  background:var(--amber);border:3px solid var(--cream);box-shadow:0 1px 5px rgba(73,53,31,.35);
+  transition:transform .09s linear,background-color .2s,opacity .3s;opacity:.35}
+#marker.live{opacity:1}
+#marker.ok{background:var(--green)}
+.labels{display:flex;justify-content:space-between;margin-top:18px;font-size:15px;color:var(--muted);font-weight:600}
+.labels span{transition:color .2s}
+.labels .on{color:var(--amber)}
+.labels .on.ok{color:var(--green)}
+.stage{flex:1;min-height:0;width:100%;display:flex;justify-content:center;align-items:flex-end;margin-top:6px;overflow:hidden}
+#flower{width:min(60vw,250px);max-height:100%;height:auto;aspect-ratio:200/360;transform-origin:50% 27.8%;
+  transform:scale(1);transition:transform 250ms ease-out;will-change:transform}
+#flower.ok{transform:scale(1.12)}
+.status{min-height:84px;text-align:center;padding-top:10px}
+.status .main{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.status .aux{margin-top:4px;font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
+#err{position:absolute;inset:0;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:30px;gap:14px;z-index:5}
+#err[hidden]{display:none}
+#err h2{margin:0;font-size:22px}
+#err p{margin:0;max-width:340px;color:var(--muted);line-height:1.45}
+#retry{border:0;background:var(--c3);border-radius:16px;padding:14px 24px;min-height:48px;font-weight:700;font-size:17px;box-shadow:0 2px 8px rgba(73,53,31,.14)}
+@media (orientation:landscape) and (max-height:520px){
+  .meter{margin-top:48px}#flower{width:auto;height:100%}
+  #pick header{margin:0 0 10px}.cards{flex-direction:row;flex-wrap:wrap}.card{min-width:40%;min-height:60px}
+}
+@media (prefers-reduced-motion:reduce){
+  #flower{transition:none}.card,.screen,#marker{transition:none}
+}
+</style>
+</head>
+<body>
+
+<main id="pick" class="screen">
+  <header>
+    <h1>Sunflower Tuner</h1>
+    <p class="sub">A little closer to harmony.</p>
+  </header>
+  <div class="cards">
+    <button class="card" style="--bg:var(--c1)" data-s="G"><b>G</b><span>196.00 Hz</span><small>Lowest string</small></button>
+    <button class="card" style="--bg:var(--c2)" data-s="D"><b>D</b><span>293.66 Hz</span></button>
+    <button class="card" style="--bg:var(--c3)" data-s="A"><b>A</b><span>440.00 Hz</span></button>
+    <button class="card" style="--bg:var(--c4)" data-s="E"><b>E</b><span>659.26 Hz</span><small>Highest string</small></button>
+  </div>
+</main>
+
+<main id="tune" class="screen off" aria-live="polite">
+  <button id="back" aria-label="Back to string selection">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#49351F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <div class="meter">
+    <div class="track"><div id="marker"></div></div>
+    <div class="labels"><span id="lf">Flat</span><span id="lo">In tune</span><span id="ls">Sharp</span></div>
+  </div>
+  <div class="stage"><svg id="flower" viewBox="0 0 200 360" aria-hidden="true"></svg></div>
+  <div class="status">
+    <div class="main" id="s1">Play your open string…</div>
+    <div class="aux" id="s2">Listening for a clear note</div>
+  </div>
+  <div id="err" hidden>
+    <h2 id="errT">Microphone needed</h2>
+    <p id="errP"></p>
+    <button id="retry">Try microphone again</button>
+  </div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const TARGETS = { G: 195.9977, D: 293.6648, A: 440.0, E: 659.2551 };
+  const IN = 5, OUT = 6.5, RANGE = 50, SILENCE_MS = 650;
+
+  /* ---------- Sunflower illustration ---------- */
+  (function drawFlower() {
+    const cx = 100, cy = 100, p = [];
+    const petal = (len, w, base) =>
+      `M0,${-base} C${w},${-base - len * .3} ${w},${-base - len * .75} 0,${-base - len} C${-w},${-base - len * .75} ${-w},${-base - len * .3} 0,${-base}Z`;
+    p.push(`<path d="M100,150 C98,210 104,290 100,370" stroke="#587644" stroke-width="7" fill="none" stroke-linecap="round"/>`);
+    p.push(`<path d="M100,268 C72,268 44,252 30,226 C64,224 92,240 100,268Z" fill="#587644" stroke="#46613a" stroke-width=".8"/>`);
+    p.push(`<path d="M100,268 C80,255 58,242 36,230" stroke="#7b9a65" stroke-width="1" fill="none"/>`);
+    p.push(`<path d="M101,314 C130,314 158,298 171,272 C138,270 108,286 101,314Z" fill="#587644" stroke="#46613a" stroke-width=".8"/>`);
+    p.push(`<path d="M101,314 C120,300 142,286 165,276" stroke="#7b9a65" stroke-width="1" fill="none"/>`);
+    // back petals, then front petals
+    const layer = (n, len, w, base, off, hues) => {
+      for (let i = 0; i < n; i++) {
+        const a = (360 / n) * i + off, v = hues[i % hues.length];
+        p.push(`<path transform="translate(${cx} ${cy}) rotate(${a})" d="${petal(len, w, base)}" fill="${v}" stroke="#b8861d" stroke-opacity=".55" stroke-width=".6"/>`);
+        p.push(`<path transform="translate(${cx} ${cy}) rotate(${a})" d="M0,${-base - 6} L0,${-base - len * .8}" stroke="#b8861d" stroke-opacity=".35" stroke-width=".6"/>`);
+      }
+    };
+    layer(26, 54, 8.5, 28, 0, ["#E3AE30", "#EAB736", "#DDA62B"]);
+    layer(26, 48, 8, 28, 6.9, ["#F4C542", "#F7CE55", "#F0BD39", "#F9D566"]);
+    // center
+    p.push(`<circle cx="${cx}" cy="${cy}" r="34" fill="#49351F" stroke="#2f2113" stroke-width="1.2"/>`);
+    p.push(`<circle cx="${cx}" cy="${cy}" r="31" fill="none" stroke="#7a5a2f" stroke-opacity=".5" stroke-width="3"/>`);
+    for (let n = 1; n < 170; n++) {
+      const r = 2.45 * Math.sqrt(n), a = n * 2.39996323;
+      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      p.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(.9 + r / 40).toFixed(2)}" fill="${n % 3 ? "#2f2113" : "#7a5a2f"}" fill-opacity=".85"/>`);
+    }
+    $("flower").innerHTML = p.join("");
+  })();
+
+  /* ---------- Pitch detection (YIN, constrained near the target) ---------- */
+  function detect(x, sr, t) {
+    let e = 0;
+    for (let i = 0; i < x.length; i++) e += x[i] * x[i];
+    if (Math.sqrt(e / x.length) < 0.008) return null;          // silence / too weak
+    const tmin = Math.max(2, Math.floor(sr / (t * 1.25))), tmax = Math.ceil(sr / (t * 0.8));
+    const W = Math.min(2048, x.length - tmax - 2);
+    if (W < 512) return null;
+    const c = new Float32Array(tmax + 2);
+    let run = 0; c[0] = 1;
+    for (let tau = 1; tau <= tmax + 1; tau++) {
+      let s = 0;
+      for (let j = 0; j < W; j++) { const v = x[j] - x[j + tau]; s += v * v; }
+      run += s; c[tau] = run > 0 ? s * tau / run : 1;
+    }
+    for (let tau = tmin; tau <= tmax; tau++) {
+      if (c[tau] < 0.15) {
+        while (tau < tmax && c[tau + 1] < c[tau]) tau++;
+        const a = c[tau - 1], b = c[tau], d = c[tau + 1], den = a - 2 * b + d;
+        const shift = den ? (a - d) / (2 * den) : 0;
+        return sr / (tau + Math.max(-1, Math.min(1, shift)));
+      }
+    }
+    return null;                                                // no clear periodicity near the target
+  }
+
+  /* ---------- Session state ---------- */
+  let ctx = null, stream = null, an = null, buf = null, raf = 0, session = 0;
+  let lastErr = "", target = 0, streak = 0, smooth = null, lastGood = 0, lastRun = 0, inTune = false, shown = false;
+
+  function setUI({ live, cents, freq, ok }) {
+    const m = $("marker");
+    m.classList.toggle("live", live);
+    m.classList.toggle("ok", live && ok);
+    $("flower").classList.toggle("ok", live && ok);
+    const track = m.parentElement.clientWidth;
+    const pos = live ? Math.max(-1, Math.min(1, cents / RANGE)) * (track / 2) : 0;
+    m.style.transform = `translateX(${pos}px)`;
+    const lf = $("lf"), lo = $("lo"), ls = $("ls");
+    [lf, lo, ls].forEach(el => el.className = "");
+    if (live) {
+      const el = ok ? lo : cents < 0 ? lf : ls;
+      el.className = "on" + (ok ? " ok" : "");
+      const r = Math.round(cents);
+      $("s1").textContent = freq.toFixed(1) + " Hz";
+      $("s2").textContent = (r > 0 ? "+" : r < 0 ? "\u2212" : "") + Math.abs(r) + " cents";
+    } else {
+      $("s1").textContent = "Play your open string\u2026";
+      $("s2").textContent = "Listening for a clear note";
+    }
+  }
+  function clearReading() {
+    streak = 0; smooth = null; inTune = false;
+    if (shown) { shown = false; setUI({ live: false }); }
+  }
+
+  function tick() {
+    raf = requestAnimationFrame(tick);
+    const now = performance.now();
+    if (now - lastRun < 33) return;
+    lastRun = now;
+    an.getFloatTimeDomainData(buf);
+    const f = detect(buf, ctx.sampleRate, target);
+    if (f) {
+      lastGood = now; streak++;
+      const raw = 1200 * Math.log2(f / target);
+      smooth = smooth === null ? raw : smooth + (raw - smooth) * 0.4;
+      if (streak >= 3) {
+        if (!inTune && Math.abs(smooth) <= IN) inTune = true;
+        else if (inTune && Math.abs(smooth) > OUT) inTune = false;
+        shown = true;
+        setUI({ live: true, cents: smooth, freq: target * Math.pow(2, smooth / 1200), ok: inTune });
+      }
+    } else if (now - lastGood > SILENCE_MS) {
+      clearReading();
+    }
+  }
+
+  function showError(title, msg) {
+    $("errT").textContent = title;
+    $("errP").textContent = msg + (lastErr ? "  (" + lastErr + ")" : "");
+    $("err").hidden = false;
+  }
+
+  async function startMic() {
+    const my = ++session;
+    $("err").hidden = true;
+    clearReading(); setUI({ live: false });
+    try {
+      if (!window.isSecureContext) throw { name: "Insecure" };
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw { name: "Unsupported" };
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) throw { name: "Unsupported" };
+      ctx = new AC();                                   // created inside a tap handler so iOS allows it
+      let s;
+      try {
+        s = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+      } catch (err) {
+        if (err && (err.name === "OverconstrainedError" || err.name === "TypeError"))
+          s = await navigator.mediaDevices.getUserMedia({ audio: true });   // browser rejected the constraints
+        else throw err;
+      }
+      if (my !== session) { s.getTracks().forEach(t => t.stop()); return; }   // user left meanwhile
+      stream = s;
+      try { await ctx.resume(); } catch (_) {}
+      const src = ctx.createMediaStreamSource(stream);
+      an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0;
+      src.connect(an);
+      // Chrome only pulls audio through a graph that reaches the destination; a muted gain keeps it silent.
+      const mute = ctx.createGain(); mute.gain.value = 0;
+      an.connect(mute); mute.connect(ctx.destination);
+      buf = new Float32Array(an.fftSize);
+      lastGood = performance.now();
+      raf = requestAnimationFrame(tick);
+    } catch (e) {
+      if (my !== session) return;
+      stopMic();
+      console.error("Microphone start failed:", e);
+      lastErr = (e && (e.name + (e.message ? ": " + e.message : ""))) || String(e);
+      const n = e && e.name;
+      const framed = window.self !== window.top;
+      if (framed && (n === "NotAllowedError" || n === "SecurityError"))
+        showError("Open in its own tab", "This page is embedded inside another page, and browsers block the microphone there. Open sunflower-tuner.html directly in its own browser tab.");
+      else if (n === "NotAllowedError" || n === "SecurityError")
+        showError("Microphone needed", "Sunflower Tuner needs your microphone to hear the string. Allow microphone access for this page in your browser's site settings, then try again.");
+      else if (n === "NotFoundError" || n === "OverconstrainedError")
+        showError("No microphone found", "Connect or enable a microphone, then try again.");
+      else if (n === "Insecure")
+        showError("Secure connection needed", "Microphone access only works on pages opened over HTTPS. Open this tuner from an https:// address.");
+      else if (n === "Unsupported")
+        showError("Browser not supported", "This browser can't access the microphone. Try a recent version of Safari or Chrome.");
+      else
+        showError("Microphone problem", "The microphone couldn't start. Close other apps that use it, then try again.");
+    }
+  }
+
+  function stopMic() {
+    cancelAnimationFrame(raf); raf = 0;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (ctx && ctx.state !== "closed") ctx.close().catch(() => {});
+    stream = ctx = an = buf = null;
+  }
+
+  /* ---------- Navigation ---------- */
+  function openTuner(s) {
+    target = TARGETS[s];
+    $("pick").classList.add("off"); $("tune").classList.remove("off");
+    startMic();
+  }
+  function closeTuner() {
+    session++; stopMic(); clearReading(); setUI({ live: false });
+    $("err").hidden = true;
+    $("tune").classList.add("off"); $("pick").classList.remove("off");
+  }
+  document.querySelectorAll(".card").forEach(b => b.addEventListener("click", () => openTuner(b.dataset.s)));
+  $("back").addEventListener("click", closeTuner);
+  $("retry").addEventListener("click", () => { stopMic(); startMic(); });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!ctx) return;
+    if (document.hidden) { clearReading(); ctx.suspend && ctx.suspend(); }
+    else if (ctx.state === "suspended") { ctx.resume(); lastGood = performance.now(); }
+  });
+  window.addEventListener("pagehide", stopMic);
+})();
+</script>
+</body>
+</html>
