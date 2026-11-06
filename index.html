@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFF9E9">
+<title>Sunflower Tuner</title>
+<style>
+:root{
+  --cream:#FFF9E9; --c1:#F8E7A1; --c2:#F3D777; --c3:#EEC34F; --c4:#E5AE32;
+  --brown:#49351F; --leaf:#587644; --green:#648747; --amber:#B77932; --muted:#806D50;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--cream);color:var(--brown);overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--brown);outline-offset:3px}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  padding:calc(env(safe-area-inset-top,0px) + 20px) 20px calc(env(safe-area-inset-bottom,0px) + 16px);
+  transition:opacity .3s ease,visibility .3s;overflow:hidden}
+.screen.off{opacity:0;visibility:hidden;pointer-events:none}
+.topbar{width:100%;max-width:480px;min-height:48px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:25px;margin:0;letter-spacing:-.02em}
+.topbar .sub{font-size:13px;color:var(--muted);margin:3px 0 0}
+.mode-btn{border:1px solid rgba(73,53,31,.16);background:var(--c1);border-radius:15px;padding:11px 15px;
+  font-size:14px;font-weight:750;box-shadow:0 2px 7px rgba(73,53,31,.09)}
+.mode-btn:active,.card:active,#back:active{transform:scale(.97)}
+#tune{justify-content:flex-start}
+#back{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 8px);width:46px;height:46px;
+  border:0;background:none;border-radius:24px;display:grid;place-items:center;z-index:2}
+#back svg{width:25px;height:25px}
+#tuneHeader{width:100%;max-width:440px;text-align:center;margin-top:8px;min-height:52px}
+#tuneHeader h1{font-size:23px;margin:0 0 3px}
+#tuneHeader p{font-size:13px;color:var(--muted);margin:0}
+.meter{width:100%;max-width:440px;margin-top:20px}
+.track{position:relative;height:8px;border-radius:4px;background:rgba(128,109,80,.22)}
+.track::after{content:"";position:absolute;left:50%;top:-9px;width:2px;height:26px;margin-left:-1px;background:var(--brown);opacity:.55;border-radius:1px}
+#marker{position:absolute;top:50%;left:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;
+  background:var(--amber);border:3px solid var(--cream);box-shadow:0 1px 5px rgba(73,53,31,.35);
+  transition:transform .09s linear,background-color .2s,opacity .3s;opacity:.35}
+#marker.live{opacity:1}
+#marker.ok{background:var(--green)}
+.labels{display:flex;justify-content:space-between;margin-top:18px;font-size:14px;color:var(--muted);font-weight:600}
+.labels span{transition:color .2s}
+.labels .on{color:var(--amber)}
+.labels .on.ok{color:var(--green)}
+.stage{flex:1;min-height:0;width:100%;display:flex;justify-content:center;align-items:flex-end;margin-top:4px;overflow:hidden}
+#flower{width:min(57vw,235px);max-height:100%;height:auto;aspect-ratio:200/360;transform-origin:50% 27.8%;
+  transform:scale(1);transition:transform 250ms ease-out;will-change:transform}
+#flower.ok{transform:scale(1.12)}
+.status{min-height:90px;text-align:center;padding-top:8px;width:100%}
+.status .main{font-size:27px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.status .aux{margin-top:4px;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+#micState{font-size:12px;color:var(--muted);margin-top:7px}
+#err{position:absolute;inset:0;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:30px;gap:14px;z-index:5}
+#err[hidden]{display:none}
+#err h2{margin:0;font-size:22px}
+#err p{margin:0;max-width:340px;color:var(--muted);line-height:1.45}
+#retry{border:0;background:var(--c3);border-radius:16px;padding:14px 24px;min-height:48px;font-weight:700;font-size:17px;box-shadow:0 2px 8px rgba(73,53,31,.14)}
+/* Violin selection screen */
+#pick header{text-align:center;margin:16px 0 24px}
+#pick h1{font-size:29px;margin:0 0 5px}
+.sub{margin:0;color:var(--muted);font-size:15px}
+#pickBack{position:absolute;left:10px;top:calc(env(safe-area-inset-top,0px) + 8px);width:46px;height:46px;
+  border:0;background:none;border-radius:24px;display:grid;place-items:center}
+#pickBack svg{width:25px;height:25px}
+.cards{width:100%;max-width:480px;display:flex;flex-direction:column;gap:13px;flex:1;min-height:0;padding-bottom:8px}
+.card{flex:1;min-height:65px;max-height:145px;border:0;border-radius:20px;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  box-shadow:0 2px 8px rgba(73,53,31,.14);transition:transform .12s ease}
+.card b{font-size:43px;line-height:1;font-weight:800}
+.card span{font-size:17px;font-variant-numeric:tabular-nums}
+.card small{font-size:12px;color:var(--brown);opacity:.8}
+@media (orientation:landscape) and (max-height:520px){
+  .meter{margin-top:8px}#flower{width:auto;height:100%}.stage{align-items:center}
+  #tuneHeader{min-height:34px}#pick header{margin:0 0 8px}
+  .cards{flex-direction:row;flex-wrap:wrap}.card{min-width:40%;min-height:60px}
+}
+@media (max-height:700px){
+  .meter{margin-top:12px}
+  #flower{width:min(48vw,190px)}
+  .status{min-height:76px}
+}
+@media (prefers-reduced-motion:reduce){
+  #flower{transition:none}.card,.screen,#marker{transition:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Default experience: universal chromatic tuner -->
+<main id="tune" class="screen" aria-live="polite">
+  <button id="back" aria-label="Back to violin string selection" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="#49351F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <div class="topbar">
+    <div>
+      <h1>Sunflower Tuner</h1>
+      <p class="sub">A little closer to harmony.</p>
+    </div>
+    <button id="modeBtn" class="mode-btn">Violin tuner</button>
+  </div>
+
+  <div id="tuneHeader">
+    <h1 id="modeTitle">Chromatic Tuner</h1>
+    <p id="modeHint">Play any single note</p>
+  </div>
+
+  <div class="meter">
+    <div class="track"><div id="marker"></div></div>
+    <div class="labels"><span id="lf">Flat</span><span id="lo">In tune</span><span id="ls">Sharp</span></div>
+  </div>
+
+  <div class="stage"><svg id="flower" viewBox="0 0 200 360" aria-hidden="true"></svg></div>
+  <div class="status">
+    <div class="main" id="s1">Listening for a note…</div>
+    <div class="aux" id="s2">Play a note near your microphone</div>
+    <div id="micState">Microphone is active</div>
+  </div>
+
+  <div id="err" hidden>
+    <h2 id="errT">Microphone needed</h2>
+    <p id="errP"></p>
+    <button id="retry">Try microphone again</button>
+  </div>
+</main>
+
+<!-- Dedicated violin string selection -->
+<main id="pick" class="screen off">
+  <button id="pickBack" aria-label="Back to chromatic tuner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#49351F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <header>
+    <h1>Violin Tuner</h1>
+    <p class="sub">Choose the string you want to tune.</p>
+  </header>
+  <div class="cards">
+    <button class="card" style="--bg:var(--c1)" data-s="G"><b>G</b><span>196.00 Hz</span><small>Lowest string</small></button>
+    <button class="card" style="--bg:var(--c2)" data-s="D"><b>D</b><span>293.66 Hz</span></button>
+    <button class="card" style="--bg:var(--c3)" data-s="A"><b>A</b><span>440.00 Hz</span></button>
+    <button class="card" style="--bg:var(--c4)" data-s="E"><b>E</b><span>659.26 Hz</span><small>Highest string</small></button>
+  </div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const TARGETS = { G: 195.9977, D: 293.6648, A: 440.0, E: 659.2551 };
+  const NOTE_NAMES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+  const IN = 5, OUT = 6.5, RANGE = 50, SILENCE_MS = 750;
+  const MIN_FREQ = 25, MAX_FREQ = 5000;
+
+  /* ---------- Sunflower illustration: retained from the original app ---------- */
+  (function drawFlower() {
+    const cx = 100, cy = 100, p = [];
+    const petal = (len, w, base) =>
+      `M0,${-base} C${w},${-base - len * .3} ${w},${-base - len * .75} 0,${-base - len} C${-w},${-base - len * .75} ${-w},${-base - len * .3} 0,${-base}Z`;
+    p.push(`<path d="M100,150 C98,210 104,290 100,370" stroke="#587644" stroke-width="7" fill="none" stroke-linecap="round"/>`);
+    p.push(`<path d="M100,268 C72,268 44,252 30,226 C64,224 92,240 100,268Z" fill="#587644" stroke="#46613a" stroke-width=".8"/>`);
+    p.push(`<path d="M100,268 C80,255 58,242 36,230" stroke="#7b9a65" stroke-width="1" fill="none"/>`);
+    p.push(`<path d="M101,314 C130,314 158,298 171,272 C138,270 108,286 101,314Z" fill="#587644" stroke="#46613a" stroke-width=".8"/>`);
+    p.push(`<path d="M101,314 C120,300 142,286 165,276" stroke="#7b9a65" stroke-width="1" fill="none"/>`);
+    const layer = (n, len, w, base, off, hues) => {
+      for (let i = 0; i < n; i++) {
+        const a = (360 / n) * i + off, v = hues[i % hues.length];
+        p.push(`<path transform="translate(${cx} ${cy}) rotate(${a})" d="${petal(len, w, base)}" fill="${v}" stroke="#b8861d" stroke-opacity=".55" stroke-width=".6"/>`);
+        p.push(`<path transform="translate(${cx} ${cy}) rotate(${a})" d="M0,${-base - 6} L0,${-base - len * .8}" stroke="#b8861d" stroke-opacity=".35" stroke-width=".6"/>`);
+      }
+    };
+    layer(26, 54, 8.5, 28, 0, ["#E3AE30", "#EAB736", "#DDA62B"]);
+    layer(26, 48, 8, 28, 6.9, ["#F4C542", "#F7CE55", "#F0BD39", "#F9D566"]);
+    p.push(`<circle cx="${cx}" cy="${cy}" r="34" fill="#49351F" stroke="#2f2113" stroke-width="1.2"/>`);
+    p.push(`<circle cx="${cx}" cy="${cy}" r="31" fill="none" stroke="#7a5a2f" stroke-opacity=".5" stroke-width="3"/>`);
+    for (let n = 1; n < 170; n++) {
+      const r = 2.45 * Math.sqrt(n), a = n * 2.39996323;
+      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      p.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(.9 + r / 40).toFixed(2)}" fill="${n % 3 ? "#2f2113" : "#7a5a2f"}" fill-opacity=".85"/>`);
+    }
+    $("flower").innerHTML = p.join("");
+  })();
+
+  /*
+   * General YIN-style pitch detector.
+   * Unlike the old violin detector, this searches a broad frequency range.
+   * It returns the fundamental estimate, not simply the strongest FFT peak.
+   */
+  function detectPitch(x, sr, minFreq, maxFreq) {
+    let energy = 0;
+    for (let i = 0; i < x.length; i++) energy += x[i] * x[i];
+    const rms = Math.sqrt(energy / x.length);
+    if (rms < 0.006) return null;
+
+    const minTau = Math.max(2, Math.floor(sr / maxFreq));
+    const maxTau = Math.min(Math.floor(sr / minFreq), x.length - 2048);
+    if (maxTau <= minTau) return null;
+
+    // A longer comparison window improves low-note stability.
+    const W = Math.min(8192, x.length - maxTau - 1);
+    if (W < 2048) return null;
+
+    const diff = new Float32Array(maxTau + 1);
+    diff[0] = 1;
+    let cumulative = 0;
+
+    for (let tau = 1; tau <= maxTau; tau++) {
+      let sum = 0;
+      for (let j = 0; j < W; j++) {
+        const delta = x[j] - x[j + tau];
+        sum += delta * delta;
+      }
+      cumulative += sum;
+      diff[tau] = cumulative > 0 ? (sum * tau) / cumulative : 1;
+    }
+
+    const threshold = 0.16;
+    let chosen = -1;
+    for (let tau = minTau; tau <= maxTau; tau++) {
+      if (diff[tau] < threshold) {
+        while (tau < maxTau && diff[tau + 1] < diff[tau]) tau++;
+        chosen = tau;
+        break;
+      }
+    }
+
+    // If no strong YIN dip exists, reject rather than displaying a guess.
+    if (chosen < 0) return null;
+
+    const a = diff[chosen - 1], b = diff[chosen], c = diff[chosen + 1];
+    const denominator = a - 2 * b + c;
+    const shift = denominator ? (a - c) / (2 * denominator) : 0;
+    const period = chosen + Math.max(-1, Math.min(1, shift));
+    const frequency = sr / period;
+
+    if (!Number.isFinite(frequency) || frequency < minFreq || frequency > maxFreq) return null;
+    return { frequency, clarity: 1 - b };
+  }
+
+  /* ---------- Shared microphone/audio session ---------- */
+  let ctx = null, stream = null, analyser = null, buffer = null, raf = 0, session = 0;
+  let mode = "chromatic", violinString = "A", lastGood = 0, lastRun = 0;
+  let smoothCents = null, inTune = false, shown = false;
+  let candidateMidi = null, candidateCount = 0, currentMidi = null;
+
+  function setMeter(live, cents = 0, ok = false) {
+    const marker = $("marker");
+    marker.classList.toggle("live", live);
+    marker.classList.toggle("ok", live && ok);
+    $("flower").classList.toggle("ok", live && ok);
+
+    const width = marker.parentElement.clientWidth;
+    const position = live ? Math.max(-1, Math.min(1, cents / RANGE)) * (width / 2) : 0;
+    marker.style.transform = `translateX(${position}px)`;
+
+    const flat = $("lf"), center = $("lo"), sharp = $("ls");
+    [flat, center, sharp].forEach(el => el.className = "");
+    if (live) {
+      const active = ok ? center : cents < 0 ? flat : sharp;
+      active.className = "on" + (ok ? " ok" : "");
+    }
+  }
+
+  function resetReading() {
+    smoothCents = null;
+    inTune = false;
+    shown = false;
+    candidateMidi = null;
+    candidateCount = 0;
+    currentMidi = null;
+    setMeter(false);
+    if (mode === "chromatic") {
+      $("s1").textContent = "Listening for a note…";
+      $("s2").textContent = "Play a note near your microphone";
+    } else {
+      $("s1").textContent = "Play your open string…";
+      $("s2").textContent = "Listening for a clear note";
+    }
+  }
+
+  function noteFromFrequency(frequency) {
+    const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
+    const target = 440 * Math.pow(2, (midi - 69) / 12);
+    const cents = 1200 * Math.log2(frequency / target);
+    const name = NOTE_NAMES[((midi % 12) + 12) % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    return { midi, target, cents, label: name + octave };
+  }
+
+  function renderChromatic(frequency) {
+    const note = noteFromFrequency(frequency);
+
+    // Require two consecutive readings before changing the displayed note.
+    if (note.midi !== candidateMidi) {
+      candidateMidi = note.midi;
+      candidateCount = 1;
+    } else {
+      candidateCount++;
+    }
+    if (candidateCount < 2 && currentMidi !== note.midi) return;
+
+    currentMidi = note.midi;
+    smoothCents = smoothCents === null ? note.cents : smoothCents + (note.cents - smoothCents) * 0.32;
+
+    if (!inTune && Math.abs(smoothCents) <= IN) inTune = true;
+    else if (inTune && Math.abs(smoothCents) > OUT) inTune = false;
+
+    shown = true;
+    setMeter(true, smoothCents, inTune);
+    $("s1").textContent = note.label;
+    const centsRounded = Math.round(smoothCents);
+    const centsText = (centsRounded > 0 ? "+" : centsRounded < 0 ? "−" : "") + Math.abs(centsRounded) + " cents";
+    $("s2").textContent = frequency.toFixed(2) + " Hz  ·  " + centsText;
+  }
+
+  function renderViolin(frequency) {
+    const target = TARGETS[violinString];
+    const cents = 1200 * Math.log2(frequency / target);
+    smoothCents = smoothCents === null ? cents : smoothCents + (cents - smoothCents) * 0.4;
+
+    if (!inTune && Math.abs(smoothCents) <= IN) inTune = true;
+    else if (inTune && Math.abs(smoothCents) > OUT) inTune = false;
+
+    shown = true;
+    setMeter(true, smoothCents, inTune);
+    const r = Math.round(smoothCents);
+    $("s1").textContent = frequency.toFixed(1) + " Hz";
+    $("s2").textContent = (r > 0 ? "+" : r < 0 ? "−" : "") + Math.abs(r) + " cents";
+  }
+
+  function tick() {
+    raf = requestAnimationFrame(tick);
+    const now = performance.now();
+    // About 11 analyses per second: keeps the longer low-frequency analysis manageable.
+    if (now - lastRun < 90 || !analyser || !ctx) return;
+    lastRun = now;
+    analyser.getFloatTimeDomainData(buffer);
+
+    let minFreq = MIN_FREQ, maxFreq = MAX_FREQ;
+    if (mode === "violin") {
+      const target = TARGETS[violinString];
+      minFreq = target / 1.25;
+      maxFreq = target / 0.8;
+    }
+
+    const result = detectPitch(buffer, ctx.sampleRate, minFreq, maxFreq);
+    if (result) {
+      lastGood = now;
+      if (mode === "chromatic") renderChromatic(result.frequency);
+      else renderViolin(result.frequency);
+    } else if (now - lastGood > SILENCE_MS) {
+      resetReading();
+    }
+  }
+
+  function showError(title, message, errorName = "") {
+    $("errT").textContent = title;
+    $("errP").textContent = message + (errorName ? " (" + errorName + ")" : "");
+    $("err").hidden = false;
+    $("micState").textContent = "Microphone unavailable";
+  }
+
+  async function startMic() {
+    const mySession = ++session;
+    $("err").hidden = true;
+    resetReading();
+    $("micState").textContent = "Requesting microphone…";
+
+    try {
+      if (!window.isSecureContext) throw { name: "Insecure" };
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw { name: "Unsupported" };
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw { name: "Unsupported" };
+
+      const audioContext = new AudioContextClass();
+      let audioStream;
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+      } catch (error) {
+        if (error && (error.name === "OverconstrainedError" || error.name === "TypeError")) {
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } else {
+          throw error;
+        }
+      }
+
+      if (mySession !== session) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioContext.close().catch(() => {});
+        return;
+      }
+
+      ctx = audioContext;
+      stream = audioStream;
+      try { await ctx.resume(); } catch (_) {}
+
+      const source = ctx.createMediaStreamSource(stream);
+      analyser = ctx.createAnalyser();
+      // 16384 samples gives enough time-domain data for the lowest piano note, A0.
+      analyser.fftSize = 16384;
+      analyser.smoothingTimeConstant = 0;
+      source.connect(analyser);
+
+      const mute = ctx.createGain();
+      mute.gain.value = 0;
+      analyser.connect(mute);
+      mute.connect(ctx.destination);
+
+      buffer = new Float32Array(analyser.fftSize);
+      lastGood = performance.now();
+      lastRun = 0;
+      $("micState").textContent = "Microphone is active";
+      raf = requestAnimationFrame(tick);
+    } catch (error) {
+      if (mySession !== session) return;
+      stopMic();
+      console.error("Microphone start failed:", error);
+      const name = error && error.name;
+      const framed = window.self !== window.top;
+
+      if (framed && (name === "NotAllowedError" || name === "SecurityError")) {
+        showError("Open in its own tab", "This page is embedded inside another page. Open Sunflower Tuner directly in its own browser tab.", name);
+      } else if (name === "NotAllowedError" || name === "SecurityError") {
+        showError("Microphone needed", "Allow microphone access for this website in your browser settings, then try again.", name);
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        showError("No microphone found", "Connect or enable a microphone, then try again.", name);
+      } else if (name === "Insecure") {
+        showError("Secure connection needed", "Microphone access only works on HTTPS pages. Open this tuner from its GitHub Pages HTTPS address.", name);
+      } else if (name === "Unsupported") {
+        showError("Browser not supported", "Try a recent version of Safari or Chrome.", name);
+      } else {
+        showError("Microphone problem", "The microphone couldn't start. Close other apps using it, then try again.", name || "");
+      }
+    }
+  }
+
+  function stopMic() {
+    cancelAnimationFrame(raf);
+    raf = 0;
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    if (ctx && ctx.state !== "closed") ctx.close().catch(() => {});
+    stream = null;
+    ctx = null;
+    analyser = null;
+    buffer = null;
+  }
+
+  /* ---------- Navigation ---------- */
+  function showChromatic() {
+    session++;
+    stopMic();
+    mode = "chromatic";
+    $("pick").classList.add("off");
+    $("tune").classList.remove("off");
+    $("modeBtn").hidden = false;
+    $("back").hidden = true;
+    $("modeTitle").textContent = "Chromatic Tuner";
+    $("modeHint").textContent = "Play any single note";
+    $("modeBtn").textContent = "Violin tuner";
+    $("err").hidden = true;
+    startMic();
+  }
+
+  function showViolinPicker() {
+    session++;
+    stopMic();
+    $("tune").classList.add("off");
+    $("pick").classList.remove("off");
+  }
+
+  function openViolinString(stringName) {
+    mode = "violin";
+    violinString = stringName;
+    $("pick").classList.add("off");
+    $("tune").classList.remove("off");
+    $("modeBtn").hidden = true;
+    $("back").hidden = false;
+    $("modeTitle").textContent = "Violin · " + stringName;
+    $("modeHint").textContent = "Tune your " + stringName + " string";
+    $("micState").textContent = "Starting microphone…";
+    startMic();
+  }
+
+  $("modeBtn").addEventListener("click", showViolinPicker);
+  $("pickBack").addEventListener("click", showChromatic);
+  document.querySelectorAll(".card").forEach(button => {
+    button.addEventListener("click", () => openViolinString(button.dataset.s));
+  });
+  $("back").addEventListener("click", showViolinPicker);
+  $("retry").addEventListener("click", () => {
+    stopMic();
+    startMic();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!ctx) return;
+    if (document.hidden) {
+      resetReading();
+      if (ctx.suspend) ctx.suspend();
+    } else if (ctx.state === "suspended") {
+      ctx.resume();
+      lastGood = performance.now();
+    }
+  });
+
+  window.addEventListener("pagehide", stopMic);
+
+  // Start directly in the universal chromatic tuner.
+  startMic();
+})();
+</script>
+</body>
+</html>
